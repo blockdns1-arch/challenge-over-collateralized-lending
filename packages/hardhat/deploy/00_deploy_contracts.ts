@@ -82,6 +82,46 @@ export default deployScript(
         value: parseEther("1000000"),
         account: deployer,
       });
+    } else {
+      // Live network setup: seed the DEX and the lending pool with testnet-sized liquidity so the
+      // frontend (price, borrowing, liquidation controls) actually works on e.g. Sepolia.
+      await env.execute(cornToken, {
+        functionName: "mintTo",
+        args: [lending.address, parseEther("1000000000")],
+        account: deployer,
+      });
+      await env.execute(cornToken, {
+        functionName: "mintTo",
+        args: [deployer, parseEther("1000000")],
+        account: deployer,
+      });
+      await env.execute(cornToken, {
+        functionName: "mintTo",
+        args: [movePrice.address, parseEther("1000000")],
+        account: deployer,
+      });
+      await env.execute(cornToken, {
+        functionName: "approve",
+        args: [cornDEX.address, parseEther("1000000")],
+        account: deployer,
+      });
+      await env.execute(cornDEX, {
+        functionName: "init",
+        args: [parseEther("1000000")],
+        value: parseEther("0.05"),
+        account: deployer,
+      });
+      // Give MovePrice a little ETH so it can push the price up from the frontend
+      await env.network.provider.request<{ params: [Record<string, string>]; result: string }>({
+        method: "eth_sendTransaction",
+        params: [
+          {
+            from: deployer,
+            to: movePrice.address,
+            value: `0x${parseEther("0.05").toString(16)}`,
+          },
+        ],
+      });
     }
   },
   { tags: ["Lending"] },
